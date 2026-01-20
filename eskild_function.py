@@ -211,9 +211,13 @@ def transmission_vs_energy(H_device, hamil_R, V_R, hamil_L, V_L, energy_range, e
     return transmission_values
 
 def hamiltonian(xyz):
-    a = 1.42 # C-C bond length
+    bond = 1.43877067
+    Vpppi = -2.7
+    cut = bond + 0.3
     dist = np.linalg.norm(xyz[None, :, :] - xyz[:, None, :], axis=2)
-    return np.where((dist < (a + 0.1)) & (dist > 0.1), -1, 0)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        H = np.where((dist < cut) & (dist > 0.1), Vpppi * (bond / dist)**2, 0.0)
+    return H
 
 # Calculate band structure
 def calculate_bands(structure, n_kpoints=300):
