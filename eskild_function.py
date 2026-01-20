@@ -368,3 +368,49 @@ def process_frame(frame, energy_range, sig_L_list, sig_R_list, eta):
     
     trans_val = transmission_vs_energy_one(H_D, energy_range, sig_R_list, sig_L_list, None, None, eta=eta)
     return trans_val
+
+# Define a new function that handles the defect
+def process_frame_defected(frame, energy_range, sig_L_list, sig_R_list, eta, defect_atom_indices=[47], defect_energies=[-2.0]):
+    molecule = frame
+    
+    # Sort numbering along x direction
+    pos = molecule.positions
+    x_sort_args = np.lexsort((pos[:, 0], pos[:, 2]))
+    # Manually swap atoms 9 and 10 as requested
+    x_sort_args[[9, 10]] = x_sort_args[[10, 9]]
+    
+    # Sort positions for Hamiltonian calculation
+    pos_sorted = pos[x_sort_args]
+        
+    n_lead_atoms = 20
+    # Create indices for the sorted array
+    idx_D = np.arange(n_lead_atoms, len(pos_sorted)-n_lead_atoms)
+    
+    # Calculate Hamiltonian for the sorted positions
+    H_full = hamiltonian(pos_sorted) 
+    
+    # Apply the defect 
+    # We need to find where 'defect_atom_indices' ended up in the sorted array
+    # sorted_idx is the index in H_full corresponding to original atom 'defect_atom_index'
+    
+    # Vectorized lookup for indices
+    # We want to find i such that x_sort_args[i] is in defect_atom_indices
+    # sorter = np.argsort(x_sort_args)
+    # sorted_indices = sorter[np.searchsorted(x_sort_args, defect_atom_indices, sorter=sorter)]
+    
+    # A cleaner way given x_sort_args is a permutation: 
+    # If we want to find where original index `k` went, we can invert the permutation.
+    inverse_permutation = np.empty_like(x_sort_args)
+    inverse_permutation[x_sort_args] = np.arange(len(x_sort_args))
+    
+    sorted_defect_indices = inverse_permutation[defect_atom_indices]
+    
+    # Add the on-site energies using advanced indexing (no for loops)
+    H_full[sorted_defect_indices, sorted_defect_indices] = defect_energies
+    
+    # Extract the device part
+    H_D = H_full[np.ix_(idx_D, idx_D)]   
+    
+    # Calculate transmission
+    trans_val = transmission_vs_energy_one(H_D, energy_range, sig_R_list, sig_L_list, None, None, eta=eta)
+    return trans_val
