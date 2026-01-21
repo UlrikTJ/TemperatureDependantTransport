@@ -213,7 +213,7 @@ def transmission_vs_energy(H_device, hamil_R, V_R, hamil_L, V_L, energy_range, e
 def hamiltonian(xyz):
     bond = 1.43877067
     Vpppi = -2.7
-    cut = bond + 0.3
+    cut = bond + 0.8
     dist = np.linalg.norm(xyz[None, :, :] - xyz[:, None, :], axis=2)
     with np.errstate(divide='ignore', invalid='ignore'):
         H = np.where((dist < cut) & (dist > 0.1), Vpppi * (bond / dist)**2, 0.0)
