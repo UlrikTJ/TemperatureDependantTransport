@@ -31,6 +31,9 @@ def plot_ase_xy(
     lw_min=0.6,                # minimum shaft linewidth
     lw_max=3.0,                # maximum shaft linewidth
 
+    highlight_atoms=None,      # List of atom indices to highlight
+    highlight_radius=None,     # Radius for highlighted atoms
+    
     ax=None,
 ):
     
@@ -88,14 +91,24 @@ def plot_ase_xy(
         )
 
     # --- Atom outlines ---
+    highlight_set = set(highlight_atoms) if highlight_atoms is not None else set()
     for i in range(N):
+        if i in highlight_set:
+            ec = "black"
+            lw = 2.0
+            r_use = highlight_radius if highlight_radius is not None else atom_radius
+        else:
+            ec = "black"
+            lw = 1.0
+            r_use = atom_radius
+
         ax.add_patch(
             Circle(
                 xy[i],
-                radius=atom_radius,
-                edgecolor="black",
+                radius=r_use,
+                edgecolor=ec,
                 facecolor="none",
-                linewidth=1.0,
+                linewidth=lw,
                 zorder=2,
             )
         )
