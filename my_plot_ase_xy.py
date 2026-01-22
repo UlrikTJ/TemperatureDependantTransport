@@ -33,69 +33,38 @@ def plot_ase_xy(
 
     ax=None,
 ):
-    """
-    Plot ASE atoms in the xz-plane with:
-      - Atom circles (black outline, no fill)
-      - Bonds to neighbors within `cutoff` (thin black lines)
-      - Optional wavefunction overlay (psi on atoms):
-          * color by phase (HSV wheel)
-          * radius by probability (|psi| or |psi|^2 depending on prob_mode)
-      - Optional bond-current arrows from matrix J:
-          * drawn as shaft line + small triangular head ("paper-style")
-          * size scales with |J_ij|
-          * direction controlled by current_dir for i>j entries
-
-    Parameters
-    ----------
-    atoms : ase.Atoms
-    cutoff : float
-        Bond cutoff in Å.
-    atom_radius : float
-        Radius of the atom outline circles (in plot coordinate units, Å).
-
-    psi : (N,) complex array or None
-        Wavefunction values on atoms. If None, wavefunction overlay is omitted.
-    wf_scale : float
-        Global scale for wavefunction circle radii.
-    wf_alpha : float
-        Alpha for wavefunction circles.
-    prob_mode : {"sqrt","linear"}
-        "sqrt": radius ~ |psi| (default)
-        "linear": radius ~ |psi|^2
-    show_phase_colorbar : bool
-        Show phase colorbar if psi is provided.
-
-    J : (N,N) array or None
-        Bond current matrix. If None, current arrows are omitted.
-    current_dir : {"i_to_j","j_to_i","sign"}
-        For each pair (i>j):
-          - "i_to_j": arrow i -> j
-          - "j_to_i": arrow j -> i
-          - "sign": direction depends on sign of J[i,j]
-                    (positive i->j, negative j->i)
-    current_scale : float
-        Global scaling of arrow linewidths and head sizes.
-    current_alpha : float
-        Alpha for current arrows.
-    current_threshold : float
-        Skip arrows with |J_ij| <= threshold.
-    currents_on_bonds_only : bool
-        If True, only draw current arrows for pairs within `cutoff`.
-
-    head_length, head_width : float
-        Base arrowhead geometry in Å (scaled weakly with |J|).
-    lw_min, lw_max : float
-        Shaft linewidth range (scaled with |J|).
-
-    ax : matplotlib Axes or None
-        If None, creates a new figure.
-
-    Returns
-    -------
-    fig, ax
-    """
+    
     pos = atoms.get_positions()
-    xy = pos[:, [0, 2]].astype(float)
+    # xy = pos[:, [0, 2]].astype(float) # Original: x and z
+    # Rotate 90 degrees clockwise: (x, z) -> (z, -x)
+    # But since we usually want positive axes, let's just swap them and maybe flip if needed.
+    # 90 deg clockwise: new_x = z, new_y = -x. 
+    # Let's try just swapping x and z for now as a "rotation" of the view, 
+    # effectively plotting (z, x) or (z, -x).
+    # If the user wants 90 deg clockwise rotation of the image:
+    # x' = y
+    # y' = -x
+    # origin is usually flexible in plots.
+    
+    # Original map: x -> plot_x, z -> plot_y
+    # We want: 
+    #   old_plot_x (axis 0) -> new_plot_y (axis 1)
+    #   old_plot_y (axis 2) -> -new_plot_x (axis 0) (or just new_plot_x depending on preference)
+
+    # Let's simply swap the columns extracted to rotate the view.
+    # If we map x->y and z->x, it's a 90 degree rotation/reflection.
+    
+    # x_new = z (pos[:, 2])
+    # y_new = -x (pos[:, 0])  <-- standard 90 deg CW rotation x,y -> y, -x
+    
+    x_coords = pos[:, 0]
+    z_coords = pos[:, 2]
+    
+    # 90 degrees clockwise: (x, y) -> (y, -x)
+    # Here our "y" is z.
+    # So (x, z) -> (z, -x)
+    
+    xy = np.column_stack((z_coords, -x_coords)).astype(float)
     N = len(atoms)
 
     if ax is None:
@@ -251,7 +220,7 @@ def plot_ase_xy(
                     Polygon(
                         tri,
                         closed=True,
-                        facecolor="black",
+                        facecolor="red",
                         edgecolor="none",
                         alpha=current_alpha,
                         zorder=4,
@@ -263,7 +232,7 @@ def plot_ase_xy(
                 ax.add_collection(
                     LineCollection(
                         shaft_segs,
-                        colors="black",
+                        colors="red",
                         linewidths=shaft_lws,
                         alpha=current_alpha,
                         zorder=4,
@@ -275,8 +244,8 @@ def plot_ase_xy(
     ax.autoscale_view()
     ax.margins(0.1)
     #ax.set_aspect("equal", adjustable="datalim")
-    ax.set_xlabel("x (Å)")
-    ax.set_ylabel("z (Å)")
+    ax.set_xlabel("z (Å)")
+    ax.set_ylabel("-x (Å)")
     ax.autoscale_view()
     #ax.margins(0.1)
 
