@@ -229,6 +229,33 @@ def get_surface_greens_function(h_unit, v_unit, z, max_iter=100,tol=1e-10):
 
     return g_s,g_b,sigma_s,sigma_b
 
+# Calculate transmission
+def calculate_transmission(atoms, energy, nL, nR):
+    positions = atoms.get_positions()
+    Hbig = hamdd(positions)
+    HL, VL, HR, VR, HC, VLC, VRC, HD, VLD, VRD = SplitHam(Hbig, nL, nR)
+    dim = HC.shape[0]
+    I = np.eye(dim, dtype=complex)
+
+    transmission = np.zeros_like(energy)
+    for i, e in enumerate(energy):
+        z = e + 1j*1e-8
+        gl_s, gl_b, sigmal_s, sigmal_b = get_surface_greens_function(HL, VL, z)
+        gr_s, gr_b, sigmar_s, sigmar_b = get_surface_greens_function(HR, VR, z)
+
+        # left and right lead, eq 134
+        sigma_L = VLC.T.conj() @ gl_s @ VLC
+        sigma_R = VRC.T.conj() @ gr_s @ VRC
+
+        # gammas, eq 136
+        gamma_L = 1j * (sigma_L - sigma_L.T.conj())
+        gamma_R = 1j * (sigma_R - sigma_R.T.conj())
+
+        g_C = np.linalg.inv(z * I - HC - sigma_L - sigma_R)
+        t_matrix = gamma_R @ g_C @ gamma_L @ g_C.T.conj()
+
+        transmission[i] = np.trace(t_matrix).real
+    return transmission
 
 # Loading and plotting temperature along MD trajectory
 def plot_mdlog(fname):
@@ -239,3 +266,50 @@ def plot_mdlog(fname):
     ax.set_ylabel("Temperature, K")
     return ax
 
+# Precalculate lead Green's functions for faster transmission calculations
+def precalculate_leads_greens_functions(atoms, energy, nL, nR):
+    positions = atoms.get_positions()
+    Hbig = hamdd(positions)
+    HL, VL, HR, VR, HC, VLC, VRC, HD, VLD, VRD = SplitHam(Hbig, nL, nR)
+    
+    n_energy = len(energy)
+    sz = HL.shape[0]
+    gl_s_list = np.zeros((n_energy, sz, sz), dtype=complex)
+    gr_s_list = np.zeros((n_energy, sz, sz), dtype=complex)
+    
+    for i, e in enumerate(energy):
+        z = e + 1j*1e-8
+        gl_s, gl_b, sigmal_s, sigmal_b = get_surface_greens_function(HL, VL, z)
+        gr_s, gr_b, sigmar_s, sigmar_b = get_surface_greens_function(HR, VR, z)
+        gl_s_list[i] = gl_s
+        gr_s_list[i] = gr_s
+        
+    return gl_s_list, gr_s_list
+
+def calculate_transmission_fast(atoms, energy, gl_s_list, gr_s_list, nL, nR):
+    positions = atoms.get_positions()
+    Hbig = hamdd(positions)
+    HL, VL, HR, VR, HC, VLC, VRC, HD, VLD, VRD = SplitHam(Hbig, nL, nR)
+    dim = HC.shape[0]
+    I = np.eye(dim, dtype=complex)
+
+    transmission = np.zeros_like(energy)
+    for i, e in enumerate(energy):
+        z = e + 1j*1e-8
+        
+        gl_s = gl_s_list[i]
+        gr_s = gr_s_list[i]
+
+        # left and right lead, eq 134
+        sigma_L = VLC.T.conj() @ gl_s @ VLC
+        sigma_R = VRC.T.conj() @ gr_s @ VRC
+
+        # gammas, eq 136
+        gamma_L = 1j * (sigma_L - sigma_L.T.conj())
+        gamma_R = 1j * (sigma_R - sigma_R.T.conj())
+
+        g_C = np.linalg.inv(z * I - HC - sigma_L - sigma_R)
+        t_matrix = gamma_R @ g_C @ gamma_L @ g_C.T.conj()
+
+        transmission[i] = np.trace(t_matrix).real
+    return transmission
