@@ -124,7 +124,7 @@ def plot_bandstructure(structure, kpoints=300):
     plt.plot(k_z, energies, 'k-', alpha=0.6)
     plt.title("Bandstructure")
     plt.xlabel(r"$k_z$ ($2\pi/L_z$)")
-    plt.ylabel("Energy (eV)")
+    plt.ylabel("Energy [eV]")
     plt.xlim(-0.5, 0.5)
     plt.grid(True, alpha=0.3)
     plt.show()
