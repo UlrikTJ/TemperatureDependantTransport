@@ -8,6 +8,7 @@ from matplotlib.colors import hsv_to_rgb
 def plot_ase_xy(
     atoms,
     cutoff=1.5,
+    bonds=None,
     atom_radius=0.25,
 
     # Wavefunction overlay (optional): plotted iff psi is not None
@@ -78,12 +79,21 @@ def plot_ase_xy(
     # --- Bonds (neighbors within cutoff) ---
     bond_segs = []
     bonded = set()
-    for i in range(N):
-        for j in range(i + 1, N):
-            if np.linalg.norm(xy[i] - xy[j]) <= cutoff:
-                bond_segs.append([xy[i], xy[j]])
-                bonded.add((i, j))
-                bonded.add((j, i))
+    
+    if bonds is not None:
+         # Use predefined bonds
+         for (i, j) in bonds:
+             if i < N and j < N:
+                 bond_segs.append([xy[i], xy[j]])
+                 bonded.add((i, j))
+                 bonded.add((j, i))
+    else:
+        for i in range(N):
+            for j in range(i + 1, N):
+                if np.linalg.norm(xy[i] - xy[j]) <= cutoff:
+                    bond_segs.append([xy[i], xy[j]])
+                    bonded.add((i, j))
+                    bonded.add((j, i))
 
     if bond_segs:
         ax.add_collection(
